@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="onCreationComplete()">
+	<mx:Script>
+		<![CDATA[
+			import com.adobe.air.alert.NativeAlert;
+			import com.adobe.air.alert.AlertEvent;
+
+			private const iconURL: String = "AIR_logo.png";
+			private var bmp: Bitmap = null;
+
+			private function onCreationComplete(): void
+			{
+	            var loader: Loader = new Loader();
+	            loader.contentLoaderInfo.addEventListener(Event.COMPLETE, completeHandler);
+	            loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+
+	            var request: URLRequest = new URLRequest(iconURL);
+	            loader.load(request);
+			}
+			
+	        private function completeHandler(event: Event): void
+	        {
+	        	bmp = Bitmap(Loader(event.target.loader).content);
+	        }
+
+	        private function ioErrorHandler(event: IOErrorEvent): void
+	        {
+	            trace("Unable to load image: " + iconURL);
+	        }
+
+			private function onBtnClick(): void
+			{
+				if (chkShowIcon.selected)
+				{
+					NativeAlert.show(msg.text, title_.text, NativeAlert.OK | NativeAlert.CANCEL, closeHandler, bmp);
+				}
+				else
+				{
+					NativeAlert.show(msg.text, title_.text, NativeAlert.OK | NativeAlert.CANCEL, closeHandler);
+				}
+			}
+			
+			private function closeHandler(event: AlertEvent): void
+			{
+				trace(event.detail);
+			}
+		]]>
+	</mx:Script>
+	<mx:TextInput id="title_" text="Message Title"/>
+	<mx:TextArea text="This is a sample text" id="msg" height="100" width="300"/>
+	<mx:CheckBox label="show icon" id="chkShowIcon"/>
+	<mx:Button label="click" click="onBtnClick()"/>
+</mx:WindowedApplication>
