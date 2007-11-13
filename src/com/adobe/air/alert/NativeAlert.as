@@ -1,23 +1,26 @@
 package com.adobe.air.alert
 {
+    import flash.display.Bitmap;
     import flash.display.BitmapData;
-	import flash.display.Bitmap;
-	import flash.display.NativeWindow;
-	import flash.display.NativeWindowInitOptions;
-	import flash.display.NativeWindowSystemChrome;
-	import flash.display.NativeWindowType;
-	import flash.display.SimpleButton;
-	import flash.display.Sprite;
-	import flash.display.StageAlign;
-	import flash.display.StageScaleMode;
-	import flash.events.KeyboardEvent;
-	import flash.events.MouseEvent;
-	import flash.geom.Rectangle;
-	import flash.text.TextField;
-	import flash.text.TextFieldAutoSize;
-	import flash.text.TextFormat;
-	import flash.text.TextFormatAlign;
-	import flash.ui.ContextMenu;
+    import flash.display.NativeWindow;
+    import flash.display.NativeWindowInitOptions;
+    import flash.display.NativeWindowSystemChrome;
+    import flash.display.NativeWindowType;
+    import flash.display.Screen;
+    import flash.display.SimpleButton;
+    import flash.display.Sprite;
+    import flash.display.StageAlign;
+    import flash.display.StageScaleMode;
+    import flash.events.MouseEvent;
+    import flash.events.NativeWindowBoundsEvent;
+    import flash.geom.Rectangle;
+    import flash.system.Shell;
+    import flash.text.TextField;
+    import flash.text.TextFieldAutoSize;
+    import flash.text.TextFormat;
+    import flash.text.TextFormatAlign;
+    import flash.ui.ContextMenu;
+    import flash.utils.Dictionary;
 
 	[Event(name=AlertEvent.ALERT_CLOSED_EVENT, type="com.adobe.air.alert.AlertEvent")]
 
@@ -29,6 +32,20 @@ package com.adobe.air.alert
 	    public static const OK:uint = 0x0004;
 	    public static const CANCEL:uint= 0x0008;
 
+		private var sprite: Sprite;
+		private var text: String;
+		private var alertTitle: String;
+		private var parentWindow:NativeWindow;
+		private var modal:Boolean;
+		private var textField: TextField;
+		private var titleText: TextField;
+		private const btn_space: uint = 10;
+		private var closeHandler: Function =  null;
+	    private var buttonFlags:uint = OK;
+		private var buttons:Array = [];
+		private var msgIcon: Bitmap;
+		private var curtains:Dictionary;
+
         public function NativeAlert()
         {
             super(this.getWinOptions());
@@ -36,6 +53,49 @@ package com.adobe.air.alert
             this.visible = false;
 			this.alwaysInFront = true;
 	    }
+
+		private function addCurtains():void
+		{
+			this.curtains = new Dictionary();
+			for each (var openWin:NativeWindow in Shell.shell.openedWindows)
+			{
+				if (openWin is NativeAlert) continue;
+				var curtain:Sprite = new Sprite();
+				curtain.alpha = .5;
+				curtain.x = 0;
+				curtain.y = 0;
+				curtain.graphics.clear();
+	            curtain.graphics.beginFill(0x000000);
+	            curtain.graphics.drawRect(0, 0, openWin.width, openWin.height);
+	            curtain.graphics.endFill();
+				this.curtains[openWin] = curtain;
+				openWin.addEventListener(NativeWindowBoundsEvent.RESIZING, resizeCurtain);
+				openWin.stage.addChild(curtain);
+			}
+		}
+
+		private function removeCurtains():void
+		{
+			for each (var openWin:NativeWindow in Shell.shell.openedWindows)
+			{
+				if (openWin is NativeAlert) continue;
+				if (this.curtains[openWin] != null)
+				{
+					openWin.stage.removeChild(this.curtains[openWin] as Sprite);
+					openWin.removeEventListener(NativeWindowBoundsEvent.RESIZING, resizeCurtain);
+				}
+			}
+			this.curtains = null;
+		}
+
+		private function resizeCurtain(e:NativeWindowBoundsEvent):void
+		{
+			var openWin:NativeWindow = e.target as NativeWindow;
+			if (this.curtains[openWin] == null) return;
+			var curtain:Sprite = this.curtains[openWin] as Sprite;
+			curtain.width = openWin.width;
+			curtain.height = openWin.height;
+		}
 
 		protected function getWinOptions(): NativeWindowInitOptions
 		{
@@ -51,13 +111,11 @@ package com.adobe.air.alert
 			return result;
 		}
 
-		private var sprite: Sprite;
 	    protected function createBackGround(): void
 	    {
 			var cm:ContextMenu = new ContextMenu();
 			cm.hideBuiltInItems();
 
-			this.bounds = new Rectangle(100, 100, 800, 600);
 			this.stage.align = StageAlign.TOP_LEFT;
 			this.stage.scaleMode = StageScaleMode.NO_SCALE;
 			this.sprite = new Sprite();
@@ -69,13 +127,14 @@ package com.adobe.air.alert
 
 	    private function onMouseDown(e:MouseEvent): void
 	    {
+	    	if (e.target is CustomSimpleButton) return;
 	    	this.startMove();
 	    }
 
 		private function drawBackGround(): void
 		{
 			this.sprite.graphics.clear();
-            this.sprite.graphics.beginFill(0x333333);
+            this.sprite.graphics.beginFill(0x292929);
             this.sprite.graphics.drawRoundRect(0, 0, this.width, this.height, 10, 10);
             this.sprite.graphics.endFill();
 		}
@@ -91,11 +150,6 @@ package com.adobe.air.alert
 			super.width = newWidth;
 			this.drawBackGround();
 		}
-		private var text: String;
-		private var alertTitle: String;
-
-		private var textField: TextField;
-		private var titleText: TextField;
 
 	    private function createTexts(): void
 	    {
@@ -137,9 +191,6 @@ package com.adobe.air.alert
 	        }
 	    }
 
-	    private var buttonFlags:uint = OK;
-		private var buttons:Array = [];
-
 		private function createButton(label: String, name: String): CustomSimpleButton
 		{
 			var button: CustomSimpleButton = new CustomSimpleButton(label);
@@ -150,7 +201,6 @@ package com.adobe.air.alert
 			return button;
 		}
 
-		private var closeHandler: Function =  null;
 		private function removeAlert(buttonPressed:String):void
 		{	
 			this.visible = false;
@@ -169,15 +219,21 @@ package com.adobe.air.alert
 			this.close();
 		}
 
+		public override function close():void
+		{
+			if (this.modal)
+			{
+				this.removeCurtains();
+			}
+			super.close();
+		}
+
 		private function clickHandler(event: MouseEvent): void
 		{
 			var name:String = CustomSimpleButton(event.currentTarget).name;
 			removeAlert(name);
 		}
 
-		private const btn_space: uint = 10;
-
-		private var msgIcon: Bitmap;
 		private function createChildren():void
 		{	
 			// Create the icon object, if any.
@@ -242,8 +298,9 @@ package com.adobe.air.alert
 	            }
 	            this.msgIcon.scaleX = scaleX;
 	            this.msgIcon.scaleY = scaleY;
-	            this.msgIcon.x = posX;
-	            this.msgIcon.y = posY;
+	            this.msgIcon.x = posX + 5;
+	            this.msgIcon.y = (titleText.height + 5 + this.btn_space);
+	            
 			}
 			this.textField.x = (this.msgIcon != null ? 50 : 0) + (((this.width - (this.msgIcon != null ? 50 : 0)) / 2) - (this.textField.width / 2));
 			
@@ -262,12 +319,11 @@ package com.adobe.air.alert
 	    public static function show(text:String = "",
 	    							title:String = "",
 	                                flags:uint = 0x4 /* Alert.OK */,
+	                                modal:Boolean = true,
+	                                parentWindow:NativeWindow = null,
 	                                closeHandler:Function = null,
 	                                icon: Bitmap = null): NativeAlert
 	    {
-
-//	        var modal:Boolean = (flags & Alert.NONMODAL) ? false : true;
-
 	        var alert:NativeAlert = new NativeAlert();
 
 	        if (flags & NativeAlert.OK ||
@@ -281,6 +337,8 @@ package com.adobe.air.alert
 	        alert.closeHandler = closeHandler;
 	        alert.text = text;
 	        alert.alertTitle = title;
+	        alert.parentWindow = parentWindow;
+	        alert.modal = modal;
 
 	        if (icon != null)
 	        {
@@ -289,7 +347,25 @@ package com.adobe.air.alert
 	        }
 	        
 	        alert.createChildren();
+
+	        if (modal)
+	        {
+	        	alert.addCurtains();
+	        }
+
+			if (parentWindow != null)
+			{
+				parentWindow.activate();
+				alert.bounds = new Rectangle((parentWindow.x) + ((parentWindow.width / 2) - (alert.width / 2)), (parentWindow.y) + (parentWindow.height / 4), alert.width, alert.height);
+			}
+			else
+			{
+				var s:Screen = Screen.mainScreen;
+				alert.bounds = new Rectangle((s.bounds.width / 2) - (alert.width / 2), s.bounds.height / 4, alert.width, alert.height);
+			}
+
 			alert.visible = true;
+			alert.activate();
 
 	        if (closeHandler != null)
 	        {
@@ -312,19 +388,20 @@ import flash.text.TextFormatAlign;
 class CustomSimpleButton 
 	extends SimpleButton
 {
-    private var upColor:uint   = 0xFFCC00;
-    private var overColor:uint = 0xCCFF00;
-    private var downColor:uint = 0x00CCFF;
+    private var upColorStart:uint   = 0x4E4E4E;
+    private var upColorEnd:uint     = 0x3B3B3B;
+    private var overColorStart:uint = 0x6C6C6C;
+    private var overColorEnd:uint   = 0x4A4A4A;
+    private var downColorStart:uint = 0x464646;
+    private var downColorEnd:uint   = 0x343434;
 
     public function CustomSimpleButton(label: String)
     {
     	super();
-        this.downState      = new ButtonDisplayState(downColor, 20, 60, label);
-        this.overState      = new ButtonDisplayState(overColor, 20, 60, label);
-        this.upState        = new ButtonDisplayState(upColor, 20, 60, label);
-        this.hitTestState   = new ButtonDisplayState(overColor, 40, 120, label);
-//        this.hitTestState.x = 0;  // -(this.height / 4);
-//        this.hitTestState.y = 0; // this.hitTestState.x;
+        this.downState      = new ButtonDisplayState(downColorStart, downColorEnd, 20, 60, label);
+        this.overState      = new ButtonDisplayState(overColorStart, overColorEnd, 20, 60, label);
+        this.upState        = new ButtonDisplayState(upColorStart, upColorEnd, 20, 60, label);
+        this.hitTestState   = new ButtonDisplayState(overColorStart, overColorEnd, 20, 60, label);
         this.useHandCursor  = true;
     }
 }
@@ -332,15 +409,21 @@ class CustomSimpleButton
 class ButtonDisplayState 
 	extends Sprite
 {
-    private var bgColor:uint;
+
+	import flash.display.GradientType;
+
+    private var bgColorStart:uint;
+    private var bgColorEnd:uint;
 	private var _height: uint;
 	private var _width: uint;
-    public function ButtonDisplayState(bgColor: uint, height: uint, width: uint, caption: String)
+
+    public function ButtonDisplayState(bgColorStart: uint, bgColorEnd: uint, height: uint, width: uint, caption: String)
     {
     	super();
-        this.bgColor = bgColor;
+        this.bgColorStart = bgColorStart;
+        this.bgColorEnd = bgColorEnd;
         this._height  = height;
-        this._width   = width;
+        this._width   = width;        
         var label: TextField = new TextField();
 		label.autoSize = TextFieldAutoSize.LEFT;
         var titleFormat: TextFormat = label.defaultTextFormat;
@@ -362,7 +445,7 @@ class ButtonDisplayState
 
     private function draw(): void
     {
-        this.graphics.beginFill(this.bgColor);
+        this.graphics.beginGradientFill(GradientType.LINEAR, [this.bgColorStart, this.bgColorEnd], [1, 1], [0, 255]);
         this.graphics.drawRoundRect(0, 0, this._width, this._height, 10, 10);
         this.graphics.endFill();
     }
