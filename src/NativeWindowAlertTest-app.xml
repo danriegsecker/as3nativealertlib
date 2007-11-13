@@ -113,8 +113,8 @@
     <!--  <minimizable>true</minimizable> -->
     <!--  <maximizable>true</maximizable> -->
     <!--  <resizable>true</resizable> -->
-    <!--  <width>500</width> -->
-    <!--  <height>500</height> -->
+    <width>500</width>
+    <height>300</height>
     <!--  <x>150</x> -->
     <!--  <y>150</y> -->
     <!--  <minSize>300 300</minSize> -->
