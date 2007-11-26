@@ -13,6 +13,7 @@ package com.adobe.air.alert
     import flash.display.StageScaleMode;
     import flash.events.MouseEvent;
     import flash.events.NativeWindowBoundsEvent;
+    import flash.filters.BlurFilter;
     import flash.geom.Rectangle;
     import flash.system.Shell;
     import flash.text.TextField;
@@ -20,8 +21,8 @@ package com.adobe.air.alert
     import flash.text.TextFormat;
     import flash.text.TextFormatAlign;
     import flash.ui.ContextMenu;
-    import flash.utils.Dictionary;
-
+    import flash.utils.Dictionary;    
+    
 	[Event(name=AlertEvent.ALERT_CLOSED_EVENT, type="com.adobe.air.alert.AlertEvent")]
 
 	public class NativeAlert
@@ -61,16 +62,21 @@ package com.adobe.air.alert
 			{
 				if (openWin is NativeAlert) continue;
 				var curtain:Sprite = new Sprite();
-				curtain.alpha = .5;
+				curtain.alpha = .1;
 				curtain.x = 0;
 				curtain.y = 0;
 				curtain.graphics.clear();
 	            curtain.graphics.beginFill(0x000000);
 	            curtain.graphics.drawRect(0, 0, openWin.width, openWin.height);
 	            curtain.graphics.endFill();
-				this.curtains[openWin] = curtain;
+				this.curtains[openWin] = {"curtain":curtain};
 				openWin.addEventListener(NativeWindowBoundsEvent.RESIZING, resizeCurtain);
 				openWin.stage.addChild(curtain);
+				if (openWin.stage.numChildren > 0 && openWin.stage.getChildAt(0) != null)
+				{
+					this.curtains[openWin].filters = openWin.stage.getChildAt(0).filters;
+					openWin.stage.getChildAt(0).filters = [new BlurFilter()];
+				}
 			}
 		}
 
@@ -81,8 +87,12 @@ package com.adobe.air.alert
 				if (openWin is NativeAlert) continue;
 				if (this.curtains[openWin] != null)
 				{
-					openWin.stage.removeChild(this.curtains[openWin] as Sprite);
+					openWin.stage.removeChild(this.curtains[openWin].curtain as Sprite);
 					openWin.removeEventListener(NativeWindowBoundsEvent.RESIZING, resizeCurtain);
+					if (openWin.stage.numChildren > 0 && openWin.stage.getChildAt(0) != null)
+					{
+						openWin.stage.getChildAt(0).filters = this.curtains[openWin].filters;
+					}
 				}
 			}
 			this.curtains = null;
@@ -92,7 +102,7 @@ package com.adobe.air.alert
 		{
 			var openWin:NativeWindow = e.target as NativeWindow;
 			if (this.curtains[openWin] == null) return;
-			var curtain:Sprite = this.curtains[openWin] as Sprite;
+			var curtain:Sprite = this.curtains[openWin].curtain as Sprite;
 			curtain.width = openWin.width;
 			curtain.height = openWin.height;
 		}
