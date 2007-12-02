@@ -72,7 +72,7 @@
 			{
 				this.openedWindows.removeAll();
 				openedWindows.addItem({label:"None", data:null});
-				for each (var win:NativeWindow in Shell.shell.openedWindows)
+				for each (var win:NativeWindow in NativeApplication.nativeApplication.openedWindows)
 				{
 					openedWindows.addItem({label:win.title, data:win});
 				}
