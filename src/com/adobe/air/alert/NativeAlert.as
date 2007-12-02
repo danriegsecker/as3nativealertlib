@@ -15,7 +15,7 @@ package com.adobe.air.alert
     import flash.events.NativeWindowBoundsEvent;
     import flash.filters.BlurFilter;
     import flash.geom.Rectangle;
-    import flash.system.Shell;
+    import flash.desktop.NativeApplication;
     import flash.text.TextField;
     import flash.text.TextFieldAutoSize;
     import flash.text.TextFormat;
@@ -58,7 +58,7 @@ package com.adobe.air.alert
 		private function addCurtains():void
 		{
 			this.curtains = new Dictionary();
-			for each (var openWin:NativeWindow in Shell.shell.openedWindows)
+			for each (var openWin:NativeWindow in NativeApplication.nativeApplication.openedWindows)
 			{
 				if (openWin is NativeAlert) continue;
 				var curtain:Sprite = new Sprite();
@@ -82,7 +82,7 @@ package com.adobe.air.alert
 
 		private function removeCurtains():void
 		{
-			for each (var openWin:NativeWindow in Shell.shell.openedWindows)
+			for each (var openWin:NativeWindow in NativeApplication.nativeApplication.openedWindows)
 			{
 				if (openWin is NativeAlert) continue;
 				if (this.curtains[openWin] != null)
@@ -110,7 +110,6 @@ package com.adobe.air.alert
 		protected function getWinOptions(): NativeWindowInitOptions
 		{
             var result:NativeWindowInitOptions = new NativeWindowInitOptions();
-            result.appearsInWindowMenu = false;
             result.hasMenu = false;
             result.maximizable = false;
             result.minimizable = false;
