@@ -1,0 +1,3 @@
+In Flex, we have alerts, but they are Flex windows rather than native OS windows. This is fine in the browser, but doesn't make much sense in AIR (Adobe Integrated Runtime).  In AIR, we want our alerts to show up in their own native windows.  This project creates Flex-like alerts, but they are native windows.
+
+There is currently no zip archive available.  Please check the code out using subversion.
